@@ -51,16 +51,16 @@ The method for reading the file and storing the configuration in a map (a `Dicti
 
 ```smalltalk
 initialize
-	| file line words key value |
-	configuration := Dictionary new.
-	file := FileStream fileNamed: propertiesFile.
-	[ [ file atEnd ]
-		whileFalse: [ line := file nextLine.
-			words := line splitOn: $=.
-			key := words first.
-			value := words second.
-			configuration at: key put: value ] ]
-		ensure: [ file close ]
+  | file line words key value |
+  configuration := Dictionary new.
+  file := FileStream fileNamed: propertiesFile.
+  [ [ file atEnd ]
+    whileFalse: [ line := file nextLine.
+      words := line splitOn: $=.
+      key := words first.
+      value := words second.
+      configuration at: key put: value ] ]
+  ensure: [ file close ]
 ```
 
 Granted, the above listing is not the most exciting piece of code. It does, however, show some of Smalltalk's idiosyncrasies. Temporary variables are declared between vertical bars. They are dynamically typed. Everything is an object that responds to messages. Code within square brackets is evaluated only when a message is sent to the block. These blocks are closures which can take arguments --or not-- and are used extensively, for example when iterating over collections, or when evaluating conditionals like the `whileFalse` expression above. Apart from being a pure object language, Smalltalk is also functional.
@@ -69,7 +69,7 @@ The client can now resolve the base URL like so:
 
 ```smalltalk
 baseUrl
-	^ configuration at: #'starling.baseUrl'
+  ^ configuration at: #'starling.baseUrl'
 ```
 
 The caret symbol `^` is Smalltalk's funky way of returning. Without an explicit return, `self` is returned.
@@ -80,10 +80,10 @@ The next method creates a `GET` HTTP request, with the given headers and URL.
 
 ```smalltalk
 fetch: aPath
-	^ ZnClient new
-		headerAt: 'Authorization' put: 'Bearer ' , self token;
-		url: self baseUrl , aPath;
-		get
+  ^ ZnClient new
+    headerAt: 'Authorization' put: 'Bearer ' , self token;
+    url: self baseUrl , aPath;
+    get
 ```
 
 Let’s try it on a workspace, printing results on the `Transcript` (Smalltalk's console). Normally I'd favour writing unit tests over inspecting output, but the goal here is exploring, not being dogmatic about software development best practices.
@@ -108,9 +108,11 @@ We will use the [NeoJSON library](https://ci.inria.fr/pharo-contribution/job/Ent
 
 ```smalltalk
 StarlingEntity subclass: #AccountBalance
-	instanceVariableNames: 'acceptedOverdraft amount availableToSpend clearedBalance currency effectiveBalance pendingTransactions'
-	classVariableNames: ''
-	package: 'Starling-SDK'
+  instanceVariableNames: 'acceptedOverdraft amount 
+    availableToSpend clearedBalance currency 
+    effectiveBalance pendingTransactions'
+  classVariableNames: ''
+  package: 'Starling-SDK'
 ```
 
 The `fetch:` method needs a few tweaks before it can decode not only `AccountBalance` objects but all the different entities. We'll make it a class-side responsibility of entities to answer the path from which they can be fetched. In Smalltalk, classes are objects, singletons in charge of creating instances of their own kind. Class-side methods are inherited and can be overridden unlike static methods in Java. 
@@ -119,14 +121,14 @@ By delegating the implementation of `path`, the `StarlingEntity` parent class be
 
 ```smalltalk
 path
-	^ self subclassResponsibility
+  ^ self subclassResponsibility
 ```
 
 On the `AccountBalance` child class:
 
 ```smalltalk
 path
-	^ #'/api/v1/accounts/balance'
+  ^ #'/api/v1/accounts/balance'
 ```
 
 Now we can the pass the entity class itself as an argument to `fetch:`. We'll also pass a reader to the HTTP client to decode responses. This is done with a single-argument block (effectively a lambda that is applied when a response arrives). The JSON reader maps the response properties to the entity's instance variables. Behind the scenes, the reader uses reflection.
@@ -135,14 +137,14 @@ Here's the new `fetch:` after some changes:
 
 ```smalltalk
 fetch: anEntityClass
-	^ ZnClient new
-		headerAt: 'Authorization' put: 'Bearer ' , self token;
-		url: self baseUrl , anEntityClass path;
-		contentReader: [ :response | 
-			(NeoJSONReader on: response contents readStream)
-				mapAllInstVarsFor: anEntityClass;
-				nextAs: anEntityClass ];
-		get
+  ^ ZnClient new
+    headerAt: 'Authorization' put: 'Bearer ' , self token;
+    url: self baseUrl , anEntityClass path;
+    contentReader: [ :response | 
+      (NeoJSONReader on: response contents readStream)
+        mapAllInstVarsFor: anEntityClass;
+        nextAs: anEntityClass ];
+    get
 ```
 
 With this general-purpose method in place, we can proceed to define the rest of the entity classes. We'll need a variant of `fetch:` that can add query parameters to a request (like a date range) and parse a collection of results instead of a single object. I won't list the code here as the principle is the same as above. The inquisitive reader can look at the source code if they're interested in the details. 
@@ -192,40 +194,41 @@ The method below lives in a new class, `SimpleGrapher`. It takes a collection of
 
 ```smalltalk
 plotTotalsPerCategory: cardTransactions
-	| totals sorted data grapher |
-	"aggregate txn amounts per 'spendingCategory'"
-	totals := self sum: cardTransactions groupBy: [ :t | t spendingCategory ].
+  | totals sorted data grapher |
+  
+  "aggregate txn amounts per 'spendingCategory'"
+  totals := self sum: cardTransactions groupBy: [ :t | t spendingCategory ].
 
-	"sort the key-value pairs in descening order"
-	sorted := totals associations sort: [ :a1 :a2 | a1 value > a2 value ].
+  "sort the key-value pairs in descening order"
+  sorted := totals associations sort: [ :a1 :a2 | a1 value > a2 value ].
 
-	"the data set for a bar chart"
-	data := RTData new.
-	data barShape color: Color green.
-	data points: sorted.
-	data y: [ :pair | pair value ].
-	data barChartWithBarTitle: [ :pair | pair key ].
+  "the data set for a bar chart"
+  data := RTData new.
+  data barShape color: Color green.
+  data points: sorted.
+  data y: [ :pair | pair value ].
+  data barChartWithBarTitle: [ :pair | pair key ].
 
-	"add data set to grapher"
-	grapher := RTGrapher new.
-	grapher add: data.
-	grapher axisX
-		noTick;
-		noLabel.
-	^ grapher
+  "add data set to grapher"
+  grapher := RTGrapher new.
+  grapher add: data.
+  grapher axisX
+    noTick;
+    noLabel.
+  ^ grapher
 ```
 
 The totals map is computed like this:
 
 ```smalltalk
 sum: cardTransactions groupBy: aBlock
-	| totals |
-	totals := Dictionary new.
-	cardTransactions do: [ :t | | key sum |
-		key := aBlock value: t.
-		sum := totals at: key ifAbsent: [ 0 ].
-		totals at: key put: sum + t amount negated ].
-	^ totals
+  | totals |
+  totals := Dictionary new.
+  cardTransactions do: [ :t | | key sum |
+    key := aBlock value: t.
+    sum := totals at: key ifAbsent: [ 0 ].
+    totals at: key put: sum + t amount negated ].
+  ^ totals
 ```
 
 We iterate over the transactions, adding the current amount to the group into which the transaction falls. The group is determined by applying a single-argument block to the current transaction. This method could be written in a more idiomatic manner with `inject:into:`, Smalltalk's _fold_ or _reduce_ function, but I've chosen a slightly longer approach for clarity.
@@ -259,67 +262,68 @@ Here’s one thing not available in the Starling app which I’ve been meaning t
 The code below sets up _x,y_ coordinates, where _x_ represents the month index and _y_ the total spent for that month:
 
 ```smalltalk
-	uber := txns select: [ :t | t narrative = 'Uber' ].
-	totals := self sum: uber groupBy: [ :e | e created asDate monthName ].
-	points := (1 to: 12)
-		collect: [ :index | index @ (totals at: (Month nameOfMonth: index) ifAbsent: [ 0 ]) ].
+uber := txns select: [ :t | t narrative = 'Uber' ].
+totals := self sum: uber groupBy: [ :e | e created asDate monthName ].
+points := (1 to: 12) collect: [ :index | 
+  index @ (totals at: (Month nameOfMonth: index) ifAbsent: [ 0 ]) ].
 ```
 
 A first data set containing the totals to plot:
 
 ```smalltalk
-	ds1 := RTData new.
-	ds1 dotShape ellipse
-		color: Color green;
-		size: 6.
-	ds1 points: points.
-	ds1 y: [ :point | point y ].
+ds1 := RTData new.
+ds1 dotShape ellipse
+  color: Color green;
+  size: 6.
+ds1 points: points.
+ds1 y: [ :point | point y ].
 ```
 
 The second data set represents the fitted curve. I am using [Didier Besset's numerical package](https://github.com/PolyMathOrg/PolyMath) to produce an estimated polynomial whose coefficients are determined by a least squares fit. We'll step into that next. In general the degree of the polynomial should be small to prevent large fluctuations between the data points.
 
 ```smalltalk
-	polynomialFit := self polynomialFit: 2 on: points.
+polynomialFit := self polynomialFit: 2 on: points.
 
-	ds2 := RTData new.
-	ds2 dotShape ellipse size: 0.
-	ds2 points: points.
-	ds2 connectColor: Color orange.
-	ds2 y: [ :point | polynomialFit value: point x ].
+ds2 := RTData new.
+ds2 dotShape ellipse size: 0.
+ds2 points: points.
+ds2 connectColor: Color orange.
+ds2 y: [ :point | polynomialFit value: point x ].
 ```
 
 This is the method calling the math library. _x,y_ pairs are wrapped in weighted points then passed to the numerical method. A fitted polynomial is returned:
 
 ```smalltalk
 polynomialFit: anInteger on: aCollectionOfPoints
-	| wPoints polynomialFit |
-	wPoints := aCollectionOfPoints collect: [ :p | PMWeightedPoint point: p ].
-	polynomialFit := PMPolynomialLeastSquareFit new: anInteger on: wPoints.
-	^ polynomialFit evaluate
+  | wPoints polynomialFit |
+  wPoints := aCollectionOfPoints collect: [ :p | PMWeightedPoint point: p ].
+  polynomialFit := PMPolynomialLeastSquareFit new: anInteger on: wPoints.
+  ^ polynomialFit evaluate
 ```
 
 Lastly we add the data sets to a graph and add some decorations for the x and y axis:
 
 ```smalltalk
-	grapher := RTGrapher new.
-	grapher add: ds1.
-	grapher add: ds2.
-	grapher axisY
-		noDecimal;
-		title: 'Total £'.
-	grapher axisX
-		numberOfLabels: points size;
-		labelConversion: [ :index | 
-			index isZero
-				ifTrue: [ ' ' ]
-				ifFalse: [ (Month nameOfMonth: index) truncateTo: 3 ] ].
-	grapher
-		addDecorator: (RTAverageDecorator new withLabel: [ :aValue | 'avg = ' , aValue asInteger asString ]).
+grapher := RTGrapher new.
+grapher add: ds1.
+grapher add: ds2.
+grapher axisY
+  noDecimal;
+  title: 'Total £'.
+grapher axisX
+  numberOfLabels: points size;
+  labelConversion: [ :index | 
+    index isZero
+      ifTrue: [ ' ' ]
+      ifFalse: [ (Month nameOfMonth: index) truncateTo: 3 ] ].
+grapher
+  addDecorator: (RTAverageDecorator new withLabel: [ :aValue | 
+    'avg = ' , aValue asInteger asString ]).
 ```
 
 ![](images/uber-regression.png)
 
-The picture above shows a positive slope between the months of January to June, followed by negative slope until December. Means I've been cutting down on Uber. Is this model correct? A quick look at residuals shows values bouncing randomly and horizontally around the zero line, which suggests it is reasonable. The value for the month of June is an outlier. Realistically, the data set is too small to put too much trust on this residuals check.
+The picture above shows a positive slope between the months of January to June, followed by negative slope until December. Means I've been cutting down on Uber. Is this model correct? A quick look at residuals shows values bouncing randomly and horizontally around the zero line, which suggests it is reasonable. The value for the month of June is an outlier. Realistically, the data set is too small to put much trust on this residuals check.
 
 ```
    	Value	Fitted	Error	Residual	
