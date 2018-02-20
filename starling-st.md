@@ -3,7 +3,7 @@ It's all about open APIs in the banking industry these days. At Starling, we hav
 
 This is the first of a series of posts on the use of our API. In this post, we will do an exercise with which most people are familiar: obtaining bank statements and performing some analysis on them. We are going to to write a simple SDK in [Pharo Smalltalk](http://pharo.org/). I have chosen this language for a few reasons: its simplicity; the immediate feedback provided by the environment makes it ideal for prototyping; the minimal syntax allows developers to focus on the interesting bits without becoming distracted with boiler plate. The unofficial reason is that every now and then I get nostalgic about it and I need to spin up an _image_ and hack something just for fun.
 
-The contents of this post come from one of the weekly learning sessions held by the engineering team at Starling. This is neither a Smalltalk tutorial nor an in-depth look at the Starling API.  It is an initial exploration that I hope will incite others to come and play with our API using their favourite language.
+The contents of this post come from one of the weekly learning sessions held by the engineering team at Starling. This is neither a Smalltalk tutorial nor an in-depth look at the Starling API.  It is an initial exploration that I hope will encourage others to come and play with our API using their favourite language.
 
 ## Problem
 
@@ -40,7 +40,7 @@ Our first goal is to build a Smalltalk client which wraps the network calls and 
 
 ### The client
 
-Our client needs to know the API url and the access token. We'll make the client read both data from a properties file at construction time. Once we have a client instance, we request entities via their location path. A usage example is shown in the snippet below:
+Our client needs to know the API URL and the access token. We'll make the client read both from a properties file at construction time. Once we have a client instance, we request entities via their location path. A usage example is shown in the snippet below:
 
 ```smalltalk
 client := StarlingClient new: ‘/path/to/config.properties’.
@@ -63,7 +63,7 @@ initialize
 		ensure: [ file close ]
 ```
 
-Granted, the above listing is not the most exciting piece of code. It does, however, show some of Smalltalk's idiosyncrasies. Temporary variables are declared between vertical bars. They are dynamically typed. Everything is an object that responds to messages. Code within square brackets is evaluated only when a message is sent to the block. These blocks are closures which can take arguments--or not--and are used extensively, for example when iterating over collections, or when evaluating conditionals like the `whileFalse` expression above. Apart from being a pure object language, Smalltalk is also functional.
+Granted, the above listing is not the most exciting piece of code. It does, however, show some of Smalltalk's idiosyncrasies. Temporary variables are declared between vertical bars. They are dynamically typed. Everything is an object that responds to messages. Code within square brackets is evaluated only when a message is sent to the block. These blocks are closures which can take arguments --or not-- and are used extensively, for example when iterating over collections, or when evaluating conditionals like the `whileFalse` expression above. Apart from being a pure object language, Smalltalk is also functional.
 
 The client can now resolve the base URL like so:
 
@@ -74,7 +74,7 @@ baseUrl
 
 The caret symbol `^` is Smalltalk's funky way of returning. Without an explicit return, `self` is returned.
 
-We will now work on the network call. We want a method taking a path to the requested entity. I’m using the [Zn package](http://zn.stfx.eu/zn/index.html) for handling HTTP requests. The HTTP client from this library follows a builder pattern. As previously mentioned, methods return `self` unless they explicitly return something else. Cascading is therefore natural in Smalltalk. 
+We will now work on the network call. We want a method taking a path to the requested entity. I’m using the [Zn package](http://zn.stfx.eu/zn/index.html) for handling HTTP requests. The HTTP client from this library follows a builder pattern. As previously mentioned, methods return `self` unless they explicitly return something else. Cascading is therefore very natural in Smalltalk. 
 
 The next method creates a `GET` HTTP request, with the given headers and URL.
 
@@ -103,7 +103,8 @@ The `Transcript` shows:
 We’ve got the expected result back. Our next step is converting that text into an `AccountBalance` object. 
 
 ### Entities
-We will use the [NeoJSON library](https://ci.inria.fr/pharo-contribution/job/EnterprisePharoBook/lastSuccessfulBuild/artifact/book-result/NeoJSON/NeoJSON.html) for parsing responses. `AccountBalance` will be our first entity definition. A class with instance variables named after the response properties will do. Nothing more than accessing methods is necessary at this point.
+
+We will use the [NeoJSON library](https://ci.inria.fr/pharo-contribution/job/EnterprisePharoBook/lastSuccessfulBuild/artifact/book-result/NeoJSON/NeoJSON.html) for parsing responses. `AccountBalance` will be our first entity definition. A class with instance variables named after the response properties will do. We need nothing but access methods at this point.
 
 ```smalltalk
 StarlingEntity subclass: #AccountBalance
@@ -128,7 +129,7 @@ path
 	^ #'/api/v1/accounts/balance'
 ```
 
-Now we can the pass the entity class itself as an argument to `fetch:`. We'll also pass a reader to the HTTP client to decode responses. This is done with a one-argument block closure (effectively a lambda that is applied when a response arrives). The JSON reader maps the response properties to the entity's instance variables. Behind the scenes, the reader uses reflection.
+Now we can the pass the entity class itself as an argument to `fetch:`. We'll also pass a reader to the HTTP client to decode responses. This is done with a single-argument block (effectively a lambda that is applied when a response arrives). The JSON reader maps the response properties to the entity's instance variables. Behind the scenes, the reader uses reflection.
 
 Here's the new `fetch:` after some changes:
 
@@ -179,14 +180,15 @@ Or extract the transaction amounts:
 transactions collect: [ :t | t amount ]
 ```
 
-Manipulating groups of objects becomes easy thanks to Smalltalk's rich collection classes and enumerating protocols. Let’s move on and do something better with these results, like drawing a graph. 
+Manipulating groups of objects becomes easy thanks to Smalltalk's rich collection classes and enumeration protocols. Let’s move on and do something more fun with these results, like drawing a graph. 
 
 ### Graphs
+
 We'll build three charts: two that replicate the _spending insights_ feature of the Starling App; another one that shows the spending trend on a specific merchant. I am using the [Roassal visualisation library](http://agilevisualization.com/) to produce these graphs. In this framework, a graph is built by adding data sets to a grapher object. 
 
 #### Monthly spending per category
 
-The method below lives a new class, `SimpleGrapher`. It takes a collection of `CardTransaction` objects and creates a map of totals grouped by category --we'll zoom in on that shortly. The associations are sorted by descending value, then plotted as a bar chart.
+The method below lives in a new class, `SimpleGrapher`. It takes a collection of `CardTransaction` objects and creates a map of totals grouped by category -- we'll zoom in on that shortly. The associations are sorted by descending value, then plotted as a bar chart.
 
 ```smalltalk
 plotTotalsPerCategory: cardTransactions
@@ -226,9 +228,9 @@ sum: cardTransactions groupBy: aBlock
 	^ totals
 ```
 
- We iterate over the transactions, adding the current amount to the group into which the transaction falls. The group is determined by applying a one-argument block closure to the current transaction. This method could be written in a more idiomatic manner with `inject:into:`, Smalltalk's _fold_ or _reduce_ function, but I've chosen a slightly longer approach for clarity.
+We iterate over the transactions, adding the current amount to the group into which the transaction falls. The group is determined by applying a single-argument block to the current transaction. This method could be written in a more idiomatic manner with `inject:into:`, Smalltalk's _fold_ or _reduce_ function, but I've chosen a slightly longer approach for clarity.
 
-Putting it all together on a workspace:
+Putting it all together in a workspace:
 
 ```smalltalk
 |client transactions graph|
@@ -252,9 +254,9 @@ totals := self sum: cardTransactions groupBy: [ :t | t narrative ]
 
 #### Spending trend on a specific merchant
 
-Here’s one thing not available on the Starling app which I’ve been meaning to track: my spending trend on Uber. We'll plot monthly totals spent on Uber for one year and see if we can fit a curve to the points. The major limitation to perform meaningful regression fits is insufficient number of measurements. 
+Here’s one thing not available in the Starling app which I’ve been meaning to track: my spending trend on Uber. We'll plot monthly totals spent on Uber for one year and see if we can fit a curve to the points. We'll have to see whether we have sufficient samples to get a good fit.
 
-The code below creates _x-y_ coordinates, where _x_ represents the month index and _y_ the total spent for that month:
+The code below sets up _x,y_ coordinates, where _x_ represents the month index and _y_ the total spent for that month:
 
 ```smalltalk
 	uber := txns select: [ :t | t narrative = 'Uber' ].
@@ -286,7 +288,7 @@ The second data set represents the fitted curve. I am using [Didier Besset's num
 	ds2 y: [ :point | polynomialFit value: point x ].
 ```
 
-This is the method calling the math library. _x-y_ pairs are wrapped in weighted points then passed to the numerical method. A fitted polynomial is returned:
+This is the method calling the math library. _x,y_ pairs are wrapped in weighted points then passed to the numerical method. A fitted polynomial is returned:
 
 ```smalltalk
 polynomialFit: anInteger on: aCollectionOfPoints
@@ -317,7 +319,7 @@ Lastly we add the data sets to a graph and add some decorations for the x and y 
 
 ![](images/uber-regression.png)
 
-The picture above shows a positive slope between the months of January to June, followed by negative slope until December. Means I've been cutting down on Uber. Is this model correct? A quick look at residuals shows values bouncing randomly and horizontally around the zero line, which suggests it is reasonable. The value for the month of June is an outlier. Again, the data set is too small to put too much trust on this residuals check.
+The picture above shows a positive slope between the months of January to June, followed by negative slope until December. Means I've been cutting down on Uber. Is this model correct? A quick look at residuals shows values bouncing randomly and horizontally around the zero line, which suggests it is reasonable. The value for the month of June is an outlier. Realistically, the data set is too small to put too much trust on this residuals check.
 
 ```
    	Value	Fitted	Error	Residual	
@@ -340,8 +342,8 @@ Residual values on the _y_ axis, vs fitted values on the _x_ axis.
 
 ![](images/residual-vs-fitted.png)
 
-We could carry on creating more detailed graphs and produce a bespoke, visual bank statement. We could take this further by building a service that generates these reports on demand. Even better, we could offer the service to other Starling customers by exploiting the OAuth capabilities of our API, which allow our customers to authorise an application to access their data, without handing over their credentials (a future post will touch on this subject). Plotting historical transactions has been a fun but nonetheless trivial exercise. The objective was to demonstrate how easy it is to get started with our API. In future blogs we will use more advanced analysis techniques that (we hope) can help consumers with their finances.
+We could carry on creating more detailed graphs and produce a bespoke, visual bank statement. We could take this further by building a service that generates these reports on demand. Even better, we could offer the service to other Starling customers by exploiting the OAuth capabilities of our API, which allow our customers to authorise an application to access their data, without handing over their credentials (a future post will touch on this subject). Plotting historical transactions has been a fun but somewhat trivial exercise. The objective was to demonstrate how easy it is to get started with our API. In future blogs we will use more advanced analysis techniques that (we hope) can help consumers with their finances.
 
 ##  Summary
 
-We have obtained clean, categorised financial data programmatically, using token-based authentication. We were able to concentrate on doing something with that data rather than on building a clunky pipeline to get flat files. And we did it with few lines of code. Smalltalk rocks. APIs allow secure and seamless communication between applications.
+We obtained clean, categorised financial data programmatically, using token-based authentication. We were able to concentrate on working with that data rather than on building a clunky pipeline to process flat files. And we did it with few lines of code. Smalltalk rocks! APIs allow secure and seamless communication between applications.
