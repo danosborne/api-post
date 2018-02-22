@@ -355,4 +355,4 @@ Plotting historical transactions has been a fun but somewhat trivial exercise. T
 
 We obtained clean, categorised financial data programmatically, using token-based authentication. We were able to concentrate on working with that data rather than on building a clunky pipeline to process flat files. And we did it with few lines of code. Smalltalk rocks! APIs allow secure and seamless communication between applications.
 
-There is a lot more to our API than just transactions. There are endpoints for obtaining -- and creating -- contacts, merchants, payments, goals. We have webhooks to notify your app of events associated with an account. We have OAuth2 for authentication with different permission scopes. Come give our API a try.
+There is a lot more to our API than just transactions. There are endpoints for obtaining -- and creating -- contacts, merchants, payments, goals. We have webhooks to notify your app of events associated with an account. We have OAuth2 for authentication with different permission scopes. Come give our API a try. [Here](https://github.com/starlingbank/developer-resources) are some resources to get you started.
