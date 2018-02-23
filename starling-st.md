@@ -33,7 +33,7 @@ curl -H "Authorization: Bearer $access_token" https://api.starlingbank.com/api/v
   "amount": 370.59
 }
 ```
-Notice the lack of credentials and the structure of the response. The response is JSON text, which is easy for a humans to understand and easy for programs to parse. You can find all the sample requests and their corresponding responses in the [API docs](https://developer.starlingbank.com/docs).
+Notice the lack of credentials and the structure of the response. The response is JSON text, which is easy for humans to understand and easy for programs to parse. You can find all the sample requests and their corresponding responses in the [API docs](https://developer.starlingbank.com/docs).
 
 Our first goal is to build a Smalltalk client which wraps the network calls and uses a JSON parser to decode responses into proper objects representing things like account balance and transactions. Finally, we will write an analytic class that transforms entity data into charts.
 
