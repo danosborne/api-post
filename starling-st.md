@@ -1,9 +1,9 @@
 ## Open APIs
-It's all about open APIs in the banking industry these days. At Starling, we have built our API at the same time as our platform, not as an afterthought. We did so in spite of not being required to comply with PSD2 or Open Banking on the same timescales as the other banks. In fact, we launched our API weeks before our apps became available in the app stores. Our RESTful API is tiered. Tier 1 gives read-only access to some financial data, such as transaction history. Tier 5 includes the ability to make payments. Readers who want to experiment with our API are not required to hold an account at Starling. A sandbox environment exists where transactions can be simulated. Starling customers, however, can access their production account.
+It's all about open APIs in the banking industry these days. At Starling, we have built our API at the same time as our platform, not as an afterthought. We did so in spite of not being required to comply with PSD2 or Open Banking on the same timescales as the other banks. In fact, we launched the API weeks before our apps became available in the app stores. Our RESTful API is tiered. Tier 1 gives read-only access to some financial data, such as transaction history. Tier 5 includes the ability to make payments. Readers who want to experiment with the API are not required to hold an account at Starling. A sandbox environment exists where transactions can be simulated. Starling customers, however, can access their production account.
 
-This is the first of a series of posts on the use of our API. In this post, we will do an exercise with which most people are familiar: obtaining bank statements and performing some analysis on them. We are going to to write a simple SDK in [Pharo Smalltalk](http://pharo.org/). I have chosen this language for a few reasons: its simplicity; the immediate feedback provided by the environment makes it ideal for prototyping; the minimal syntax allows developers to focus on the interesting bits without becoming distracted with boiler plate. The unofficial reason is that every now and then I get nostalgic about it and I need to spin up an _image_ and hack something just for fun.
+This is the first of a series of posts on the use of the Starling API. In this post, we will do an exercise with which most people are familiar: obtaining bank statements and performing some analysis on them. We are going to to write a simple SDK in [Pharo Smalltalk](http://pharo.org/). I have chosen this language for a few reasons: its simplicity; the immediate feedback provided by the environment makes it ideal for prototyping; the minimal syntax allows developers to focus on the interesting bits without becoming distracted with boiler plate. The unofficial reason is that every now and then I get nostalgic about it and I need to spin up an _image_ and hack something just for fun.
 
-The contents of this post come from one of the weekly learning sessions held by the engineering team at Starling. This is neither a Smalltalk tutorial nor an in-depth look at the Starling API.  It is an initial exploration that I hope will encourage others to come and play with our API using their favourite language.
+The contents of this post come from one of the weekly learning sessions held by the engineering team at Starling. This is neither a Smalltalk tutorial nor an in-depth look at the API. It is an initial exploration that I hope will encourage others to come and play with the API using their favourite language.
 
 ## Problem
 
@@ -35,7 +35,7 @@ curl -H "Authorization: Bearer $access_token" https://api.starlingbank.com/api/v
 ```
 Notice the lack of credentials and the structure of the response. The response is JSON text, which is easy for a humans to understand and easy for programs to parse. You can find all the sample requests and their corresponding responses in the [API docs](https://developer.starlingbank.com/docs).
 
-Our first goal is to build a Smalltalk client which wraps the network calls and uses a JSON parser to decode responses into things like account balance and transactions. Finally, we will write an analytic class that transforms entity data into charts.
+Our first goal is to build a Smalltalk client which wraps the network calls and uses a JSON parser to decode responses into proper objects representing things like account balance and transactions. Finally, we will write an analytic class that transforms entity data into charts.
 
 ![](images/class-diagram.png)
 
@@ -99,7 +99,15 @@ Transcript show: response; cr.
 The `Transcript` shows:
 
 ```
-{"clearedBalance": 370.59, "effectiveBalance": 350.09, "pendingTransactions": 20.5, "availableToSpend": 1350.09, "acceptedOverdraft": 1000, "currency": "GBP", "amount": 370.59}
+{
+ "clearedBalance": 370.59, 
+ "effectiveBalance": 350.09, 
+ "pendingTransactions": 20.5, 
+ "availableToSpend": 1350.09, 
+ "acceptedOverdraft": 1000, 
+ "currency": "GBP", 
+ "amount": 370.59
+}
 ```
 We’ve got the expected result back. Our next step is converting that text into an `AccountBalance` object. 
 
@@ -258,7 +266,7 @@ totals := self sum: cardTransactions groupBy: [ :t | t narrative ]
 
 #### Spending trend on a specific merchant
 
-Here’s one thing not available in the Starling app which I’ve been meaning to track: my spending on Uber. We'll plot monthly totals spent on Uber for one year and see if we can fit a curve to the points. We'll have to see whether we have sufficient samples to get a good fit.
+Here’s one thing not available in the Starling App which I’ve been meaning to track: my spending on Uber. We'll plot monthly totals spent on Uber for one year and see if we can fit a curve to the points. We'll have to see whether we have sufficient samples to get a good fit.
 
 The code below sets up _x,y_ coordinates, where _x_ represents the month index and _y_ the total spent for that month:
 
@@ -324,7 +332,7 @@ grapher
 
 ![](images/uber-regression.png)
 
-The picture above shows a positive slope between the months of January and June, followed by negative slope until December. Means I've been cutting down on Uber. Is this model correct? A quick look at residuals shows values bouncing randomly and horizontally around the zero line, which suggests it is reasonable. The value for the month of June is an outlier. Realistically, the data set is too small to put much trust on this residuals check.
+The picture above shows a positive slope between the months of January and June, followed by negative slope until December. Means I've been cutting down on Uber. Is this model correct? A quick look at residuals shows values bouncing randomly and horizontally around the zero line, which suggests it is reasonable. The value for the month of June is an outlier. Realistically, the data set is too small to put much trust on this model.
 
 ```
    	Value	Fitted	Error	Residual	
@@ -347,12 +355,12 @@ Residual values on the _y_ axis, vs fitted values on the _x_ axis.
 
 ![](images/residual-vs-fitted.png)
 
-We could carry on creating more detailed graphs and produce a bespoke, visual bank statement. We could take this further by building a service that generates these reports on demand. Even better, we could offer the service to other Starling customers by exploiting the OAuth2 capabilities of our API, which allow our customers to authorise an application to access their data, without handing over their credentials (a future post will touch on this subject). 
+We could carry on creating more detailed graphs and produce a bespoke, visual bank statement. We could take this further by building a service that generates these reports on demand. Even better, we could offer the service to other Starling customers by exploiting the OAuth2 capabilities of the API, which allow our customers to authorise an application to access their data, without handing over their credentials (a future post will touch on this subject). 
 
-Plotting historical transactions has been a fun but somewhat trivial exercise. The objective was to demonstrate how easy it is to get started with our API. In future blogs we will use more advanced analysis techniques that (we hope) can help consumers with their finances.
+Plotting historical transactions has been a fun but somewhat trivial exercise. The objective was to demonstrate how easy it is to get started with our API. In future posts we will use more advanced analysis techniques that (we hope) can help consumers with their finances.
 
 ##  Summary
 
 We obtained clean, categorised financial data programmatically, using token-based authentication. We were able to concentrate on working with that data rather than on building a clunky pipeline to process flat files. And we did it with few lines of code. Smalltalk rocks! APIs allow secure and seamless communication between applications.
 
-There is a lot more to our API than just transactions. There are endpoints for obtaining -- and creating -- contacts, merchants, payments, goals. We have webhooks to notify your app of events associated with an account. We have OAuth2 for authentication with different permission scopes. Come give our API a try. [Here](https://github.com/starlingbank/developer-resources) are some resources to get you started.
+There is a lot more to the Starling API than just transactions. There are endpoints for obtaining --and creating-- contacts, merchants, payments, goals. We have webhooks to notify your app of events associated with an account. We have OAuth2 for authentication with different permission scopes. Almost everything you can do with the Starling App, you can do with the API. Give it a try. [Here](https://github.com/starlingbank/developer-resources) are some resources to get you started.
