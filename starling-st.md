@@ -64,7 +64,7 @@ initialize
   ensure: [ file close ]
 ```
 
-Granted, the above listing is not the most exciting piece of code. It does, however, show some of Smalltalk's idiosyncrasies. Temporary variables are declared between vertical bars. They are dynamically typed. Everything is an object that responds to messages. Code within square brackets is evaluated only when a message is sent to the block. These blocks are closures which can take arguments --or not-- and are used extensively, for example when iterating over collections, or when evaluating conditionals like the `whileFalse` expression above. Apart from being a pure object language, Smalltalk is also functional.
+Granted, the above listing is not the most exciting piece of code. It does, however, show some of Smalltalk's idiosyncrasies. Temporary variables are declared between vertical bars. They are dynamically typed. Everything is an object that responds to messages. Code within square brackets is evaluated only when a message is sent to the block. These blocks are closures which can take arguments --or not-- and are used extensively, for example when iterating over collections, when evaluating conditionals like the `whileFalse` expression above, or when setting _pluggable_ behaviour in a class without resorting to subclassing (such an example will follow). Apart from being a pure object language, Smalltalk is also functional.
 
 The client can now resolve the base URL like so:
 
@@ -140,7 +140,7 @@ path
   ^ #'/api/v1/accounts/balance'
 ```
 
-Now we can the pass the entity class itself as an argument to `fetch:`. We'll also pass a reader to the HTTP client to decode responses. This is done with a single-argument block (effectively a lambda that is applied when a response arrives). The JSON reader maps the response properties to the entity's instance variables. Behind the scenes, the reader uses reflection.
+Now we can the pass the entity class itself as an argument to `fetch:`. We'll also _plug in_ a reader to decode responses. This is done with a single-argument block, effectively a lambda that is applied when a response arrives. The JSON reader maps the response properties to the entity's instance variables. Behind the scenes, the reader uses reflection.
 
 Here's the new `fetch:` after some changes:
 
@@ -233,7 +233,8 @@ The totals map is computed like this:
 sum: cardTransactions groupBy: aBlock
   | totals |
   totals := Dictionary new.
-  cardTransactions do: [ :t | | key sum |
+  cardTransactions do: [ :t | 
+    | key sum |
     key := aBlock value: t.
     sum := totals at: key ifAbsent: [ 0 ].
     totals at: key put: sum + t amount negated ].
@@ -326,8 +327,7 @@ grapher axisX
       ifTrue: [ ' ' ]
       ifFalse: [ (Month nameOfMonth: index) truncateTo: 3 ] ].
 grapher
-  addDecorator: (RTAverageDecorator new withLabel: [ :aValue | 
-    'avg = ' , aValue asInteger asString ]).
+  addDecorator: (RTAverageDecorator withLabel: [ :val | 'avg=' , val ]).
 ```
 
 ![](images/uber-regression.png)
