@@ -1,9 +1,9 @@
 ## Open APIs
-It's all about open APIs in the banking industry these days. At Starling, we have built our API at the same time as our platform, not as an afterthought. We did so in spite of not being required to comply with PSD2 or Open Banking on the same timescales as the other banks. In fact, we launched the API weeks before our apps became available in the app stores. Our RESTful API is tiered. Tier 1 gives read-only access to some financial data, such as transaction history. Tier 5 includes the ability to make payments. Readers who want to experiment with the API are not required to hold an account at Starling. A sandbox environment exists where transactions can be simulated. Starling customers, however, can access their production account.
+It's all about open APIs in the banking industry these days. At Starling, we have built our API at the same time as our platform, not as an afterthought. Our RESTful API is tiered. Tier 1 gives read-only access to some financial data, such as transaction history. Tier 5 includes the ability to make payments.
 
-This is the first of a series of posts on the use of the Starling API. In this post, we will do an exercise with which most people are familiar: obtaining bank statements and performing some analysis on them. We are going to to write a simple SDK in [Pharo Smalltalk](http://pharo.org/). I have chosen this language for a few reasons: its simplicity; the immediate feedback provided by the environment makes it ideal for prototyping; the minimal syntax allows developers to focus on the interesting bits without becoming distracted with boiler plate. The unofficial reason is that every now and then I get nostalgic about it and I need to spin up an _image_ and hack something just for fun.
+This is the first of a series of posts on the use of the Starling API. In this post, we will do an exercise familiar to most people: obtaining bank statements and performing some analysis on them with the help of charts. We are going to write code in [Pharo Smalltalk](http://pharo.org/). I have chosen this language for a few reasons: its simplicity; the immediate feedback provided by the environment makes it ideal for prototyping; the minimal syntax allows developers to focus on the interesting bits without becoming distracted with boiler plate. The unofficial reason is that every now and then I get nostalgic about it and I need to spin up an _image_ and hack something just for fun.
 
-The contents of this post come from one of the weekly learning sessions held by the engineering team at Starling. This is neither a Smalltalk tutorial nor an in-depth look at the API. It is an initial exploration that I hope will encourage others to come and play with the API using their favourite language.
+The contents of this post come from one of the weekly learning sessions held by the engineering team at Starling. This is neither a Smalltalk tutorial nor an in-depth look at the API. It is an initial exploration that I hope will encourage others to come and play with the API using their favourite language. Readers who want to experiment with the API are not required to hold an account at Starling. A sandbox environment exists where payments and contacts can be simulated. Starling customers, however, can access their own production account securely, with a personal token having permissions they choose.
 
 ## Problem
 
@@ -35,7 +35,7 @@ curl -H "Authorization: Bearer $access_token" https://api.starlingbank.com/api/v
 ```
 Notice the lack of credentials and the structure of the response. The response is JSON text, which is easy for humans to understand and easy for programs to parse. You can find all the sample requests and their corresponding responses in the [API docs](https://developer.starlingbank.com/docs).
 
-Our first goal is to build a Smalltalk client which wraps the network calls and uses a JSON parser to decode responses into proper objects representing things like account balance and transactions. Finally, we will write an analytic class that transforms entity data into charts.
+Our goal is to build a client which wraps the network calls and decodes responses into proper objects representing things like account balance and transactions, and a class that transforms entity data into charts.
 
 ![](images/class-diagram.png)
 
@@ -66,18 +66,7 @@ initialize
 
 Granted, the above listing is not the most exciting piece of code. It does, however, show some of Smalltalk's idiosyncrasies. Temporary variables are declared between vertical bars. They are dynamically typed. Everything is an object that responds to messages. Code within square brackets is evaluated only when a message is sent to the block. These blocks are closures which can take arguments --or not-- and are used extensively, for example when iterating over collections, when evaluating conditionals like the `whileFalse` expression above, or when setting _pluggable_ behaviour in a class without resorting to subclassing (such an example will follow). Apart from being a pure object language, Smalltalk is also functional.
 
-The client can now resolve the base URL like so:
-
-```smalltalk
-baseUrl
-  ^ configuration at: #'starling.baseUrl'
-```
-
-The caret symbol `^` is Smalltalk's funky way of returning. Without an explicit return, `self` is returned.
-
-We will now work on the network call. We want a method taking a path to the requested entity. I’m using the [Zn package](http://zn.stfx.eu/zn/index.html) for handling HTTP requests. The HTTP client from this library follows a builder pattern. As previously mentioned, methods return `self` unless they explicitly return something else. Cascading is therefore very natural in Smalltalk. 
-
-The next method creates a `GET` HTTP request, with the given headers and URL.
+We will now work on the network call. We want a method taking a path to the requested entity. I’m using the [Zn package](http://zn.stfx.eu/zn/index.html) for handling HTTP requests. The HTTP client from this library follows a builder pattern. The following method creates a `GET` request with the given headers and URL, then executes the request.
 
 ```smalltalk
 fetch: aPath
@@ -87,7 +76,9 @@ fetch: aPath
     get
 ```
 
-Let’s try it on a workspace, printing results on the `Transcript` (Smalltalk's console). Normally I'd favour writing unit tests over inspecting output, but the goal here is exploring, not being dogmatic about software development best practices.
+The caret symbol `^` is Smalltalk's funky way of returning. Without an explicit return, `self` is always returned. Cascading is therefore very natural in Smalltalk.
+
+Let’s try that snippet on a workspace, printing results on the `Transcript` (Smalltalk's console). Normally I'd favour writing unit tests over inspecting output, but the goal here is exploring, not being dogmatic about software development best practices.
 
 ```smalltalk
 |client response|
@@ -113,7 +104,7 @@ We’ve got the expected result back. Our next step is converting that text into
 
 ### Entities
 
-We will use the [NeoJSON library](https://ci.inria.fr/pharo-contribution/job/EnterprisePharoBook/lastSuccessfulBuild/artifact/book-result/NeoJSON/NeoJSON.html) for parsing responses. `AccountBalance` will be our first entity definition. A class with instance variables named after the response properties will do. We need nothing but access methods at this point.
+We will use the [NeoJSON library](https://ci.inria.fr/pharo-contribution/job/EnterprisePharoBook/lastSuccessfulBuild/artifact/book-result/NeoJSON/NeoJSON.html) for parsing responses. `AccountBalance` will be our first entity definition. A class with instance variables named after the response properties --and access methods-- will do.
 
 ```smalltalk
 StarlingEntity subclass: #AccountBalance
@@ -205,7 +196,7 @@ The method below lives in a new class, `SimpleGrapher`. It takes a collection of
 plotTotalsPerCategory: cardTransactions
   | totals sorted data grapher |
   
-  "aggregate txn amounts per 'spendingCategory'"
+  "aggregate txn amounts per 'spendingCategory' "
   totals := self sum: cardTransactions groupBy: [ :t | t spendingCategory ].
 
   "sort the key-value pairs in descening order"
@@ -289,7 +280,7 @@ ds1 points: points.
 ds1 y: [ :point | point y ].
 ```
 
-The second data set represents the fitted curve. I am using [Didier Besset's numerical package](https://github.com/PolyMathOrg/PolyMath) to produce an estimated polynomial whose coefficients are determined by a least squares fit. We'll step into that next. In general the degree of the polynomial should be small to prevent large fluctuations between the data points.
+The second data set represents the fitted curve. I am using [Didier Besset's numerical package](https://github.com/PolyMathOrg/PolyMath) to produce an estimated polynomial whose coefficients are determined by a least squares fit. In general the degree of the polynomial should be small to prevent large fluctuations between the data points.
 
 ```smalltalk
 polynomialFit := self polynomialFit: 2 on: points.
@@ -299,16 +290,6 @@ ds2 dotShape ellipse size: 0.
 ds2 points: points.
 ds2 connectColor: Color orange.
 ds2 y: [ :point | polynomialFit value: point x ].
-```
-
-This is the method calling the math library. _x,y_ pairs are wrapped in weighted points then passed to the numerical method. A fitted polynomial is returned:
-
-```smalltalk
-polynomialFit: anInteger on: aCollectionOfPoints
-  | wPoints polynomialFit |
-  wPoints := aCollectionOfPoints collect: [ :p | PMWeightedPoint point: p ].
-  polynomialFit := PMPolynomialLeastSquareFit new: anInteger on: wPoints.
-  ^ polynomialFit evaluate
 ```
 
 Lastly we add both data sets to a graph and add some decorations for the x and y axis:
@@ -332,7 +313,7 @@ grapher
 
 ![](images/uber-regression.png)
 
-The picture above shows a positive slope between the months of January and June, followed by negative slope until December. Means I've been cutting down on Uber. Is this model correct? A quick look at residuals shows values bouncing randomly and horizontally around the zero line, which suggests it is reasonable. The value for the month of June is an outlier. Realistically, the data set is too small to put much trust on this model.
+The picture above shows a positive slope between the months of January and June, followed by negative slope until December. Means I've been cutting down on Uber. Is this model correct? A quick look at residuals shows values bouncing randomly around zero, which suggests it is reasonable. The value for the month of June is an outlier. Realistically, the data set is too small to put much trust on this model.
 
 ```
    	Value	Fitted	Error	Residual	
@@ -351,15 +332,11 @@ The picture above shows a positive slope between the months of January and June,
 12	 25.39	 -2.71	 0.74	    28.1	
 ```
 
-Residual values on the _y_ axis, vs fitted values on the _x_ axis.
-
-![](images/residual-vs-fitted.png)
-
 We could carry on creating more detailed graphs and produce a bespoke, visual bank statement. We could take this further by building a service that generates these reports on demand. Even better, we could offer the service to other Starling customers by exploiting the OAuth2 capabilities of the API, which allow our customers to authorise an application to access their data, without handing over their credentials (a future post will touch on this subject). 
 
 Plotting historical transactions has been a fun but somewhat trivial exercise. The objective was to demonstrate how easy it is to get started with our API. In future posts we will use more advanced analysis techniques that (we hope) can help consumers with their finances.
 
-##  Summary
+## Conclusion
 
 We obtained clean, categorised financial data programmatically, using token-based authentication. We were able to concentrate on working with that data rather than on building a clunky pipeline to process flat files. And we did it with few lines of code. Smalltalk rocks! APIs allow secure and seamless communication between applications.
 
