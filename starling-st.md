@@ -1,13 +1,26 @@
 ## Open APIs
 It's all about open APIs in the banking industry these days. At Starling, we have built our API at the same time as our platform, not as an afterthought. Our RESTful API is tiered. Tier 1 gives read-only access to some financial data, such as transaction history. Tier 5 includes the ability to make payments.
 
-This is the first of a series of posts on the use of the Starling API. In this post, we will do an exercise familiar to most people: obtaining bank statements and performing some analysis on them with the help of charts. We are going to write code in [Pharo Smalltalk](http://pharo.org/). I have chosen this language for a few reasons: its simplicity; the immediate feedback provided by the environment makes it ideal for prototyping; the minimal syntax allows developers to focus on the interesting bits without becoming distracted with boiler plate. The unofficial reason is that every now and then I get nostalgic about it and I need to spin up an _image_ and hack something just for fun.
+This is the first of a series of posts on the use of the Starling API. In this post, we will do an exercise familiar to many people: obtaining bank statements and performing some analysis on them with the help of charts. We are going to write code in [Pharo Smalltalk](http://pharo.org/). I have chosen this language for a few reasons: 
 
-The contents of this post come from one of the weekly learning sessions held by the engineering team at Starling. This is neither a Smalltalk tutorial nor an in-depth look at the API. It is an initial exploration that I hope will encourage others to come and play with the API using their favourite language. Readers who want to experiment with the API are not required to hold an account at Starling. A sandbox environment exists where payments and contacts can be simulated. Starling customers, however, can access their own production account securely, with a personal token having permissions they choose.
+- it is simple
+- minimal syntax allows us to focus on the interesting and functional bits without being distracted by boiler plate
+- immediate feedback provided by the environment makes it ideal for prototyping
+- to indulge myself; every now and then I am nostalgic about Smalltalk so I spin up an _image_ and hack something for fun!
+
+This blog post has emerged from one of the weekly learning sessions held by the engineering team at Starling which I gave recently. This is neither a Smalltalk tutorial nor an in-depth look at the API. It is an initial exploration that I hope will encourage others to come and play with the API using their favourite language. Readers who want to experiment with the API are not required to hold an account at Starling. A sandbox environment exists where payments and contacts can be simulated. Starling customers, however, can access their own production account securely, with a personal token having permissions they choose.
 
 ## Problem
 
-Until recently, customers interested in analysing their bank statements would follow more or less these steps: log on to a bank’s website, navigate to the statements page, select a rage of dates and download a CSV file. Some people use tools like `grep`, `awk` and `sed` to preprocess the exported file before loading it into a spreadsheet. This workflow is manual, requires one’s credentials and does not scale.
+Until recently, customers interested in analysing their bank statements might have followed more or less these steps: 
+
+# log on to your bank’s website, 
+# navigate to the statements page, 
+# select a rage of dates,
+# and download a CSV file,
+# repeat...
+
+Then some might use tools like `grep`, `awk` and `sed` to preprocess these files before loading into a spreadsheet. This workflow is manual, requires one’s credentials and does not scale well.
 
 Here’s what a typical statement export looks like today:
 
@@ -18,7 +31,7 @@ Date, Type, Description, Value, Balance, Account Name, Account Number
 15/11/2017,POS,"'2565 14NOV17 , VAILLANT GROUP UK , LTD , BELPER GB",-89.00,94.12,"'Current","'6*****-3*******”,
 ```
 
-In contrast to the previously stated process, the Starling API uses a token-based authentication and provides direct access to the data. You can obtain the token from the [Starling Developers website](https://developer.starlingbank.com/). Here’s an example of querying an account’s balance from the command line using `curl`:
+In contrast to the process described above, the Starling API uses token-based authentication providing direct secure access to your data. You can obtain the token from the [Starling Developers website](https://developer.starlingbank.com/). Here’s an example of querying an account’s balance from the command line using `curl`:
 
 ```bash
 curl -H "Authorization: Bearer $access_token" https://api.starlingbank.com/api/v1/accounts/balance
@@ -33,6 +46,7 @@ curl -H "Authorization: Bearer $access_token" https://api.starlingbank.com/api/v
   "amount": 370.59
 }
 ```
+
 Notice the lack of credentials and the structure of the response. The response is JSON text, which is easy for humans to understand and easy for programs to parse. You can find all the sample requests and their corresponding responses in the [API docs](https://developer.starlingbank.com/docs).
 
 Our goal is to build a client which wraps the network calls and decodes responses into proper objects representing things like account balance and transactions, and a class that transforms entity data into charts.
@@ -66,7 +80,7 @@ initialize
 
 Granted, the above listing is not the most exciting piece of code. It does, however, show some of Smalltalk's idiosyncrasies. Temporary variables are declared between vertical bars. They are dynamically typed. Everything is an object that responds to messages. Code within square brackets is evaluated only when a message is sent to the block. These blocks are closures which can take arguments --or not-- and are used extensively, for example when iterating over collections, when evaluating conditionals like the `whileFalse` expression above, or when setting _pluggable_ behaviour in a class without resorting to subclassing (such an example will follow). Apart from being a pure object language, Smalltalk is also functional.
 
-We will now work on the network call. We want a method taking a path to the requested entity. I’m using the [Zn package](http://zn.stfx.eu/zn/index.html) for handling HTTP requests. The HTTP client from this library follows a builder pattern. The following method creates a `GET` request with the given headers and URL, then executes the request.
+We will now work on the network call. We want a method taking a path to the requested entity. I’m using the [Zn package](http://zn.stfx.eu/zn/index.html) for handling HTTP requests. The HTTP client from this library implements a builder pattern. The following method creates a `GET` request with the given headers and URL, then executes the request.
 
 ```smalltalk
 fetch: aPath
@@ -338,6 +352,6 @@ Plotting historical transactions has been a fun but somewhat trivial exercise. T
 
 ## Conclusion
 
-We obtained clean, categorised financial data programmatically, using token-based authentication. We were able to concentrate on working with that data rather than on building a clunky pipeline to process flat files. And we did it with few lines of code. Smalltalk rocks! APIs allow secure and seamless communication between applications.
+We obtained clean, categorised financial data programmatically, using token-based authentication. We were able to concentrate on working with that data rather than on building a clunky pipeline to process flat files. And we did it with few lines of code. Smalltalk rocks! APIs allow secure and seamless communication between applications. Open Banking rocks!
 
 There is a lot more to the Starling API than just transactions. There are endpoints for obtaining --and creating-- contacts, merchants, payments, goals. We have webhooks to notify your app of events associated with an account. We have OAuth2 for authentication with different permission scopes. Almost everything you can do with the Starling App, you can do with the API. Give it a try. [Here](https://github.com/starlingbank/developer-resources) are some resources to get you started.
