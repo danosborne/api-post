@@ -14,11 +14,11 @@ This blog post has emerged from one of the weekly learning sessions held by the 
 
 Until recently, customers interested in analysing their bank statements might have followed more or less these steps: 
 
-# log on to your bank’s website, 
-# navigate to the statements page, 
-# select a rage of dates,
-# and download a CSV file,
-# repeat...
+1. log on to your bank’s website, 
+2. navigate to the statements page, 
+3. select a rage of dates,
+4. and download a CSV file,
+5. repeat...
 
 Then some might use tools like `grep`, `awk` and `sed` to preprocess these files before loading into a spreadsheet. This workflow is manual, requires one’s credentials and does not scale well.
 
